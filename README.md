@@ -173,8 +173,8 @@ Analyzed historical clinical trial data from 412 patients across 17 randomized s
 
 This is an exploratory analysis of historical research data, not a clinical treatment recommendation.
 
-[View analysis code](real_data/prostate_trial/run_prostate_report.R)
+[View analysis code](prostate_trial/run_prostate_report.R)
 
-[View prostate cancer research report file](real_data/prostate_trial/published/prostate_cancer_report.html)
+[View prostate cancer research report](prostate_trial/published/prostate_cancer_report.html)
 
 [Original dataset source](https://search.r-project.org/CRAN/refmans/Surrogate/html/prostate.html)
