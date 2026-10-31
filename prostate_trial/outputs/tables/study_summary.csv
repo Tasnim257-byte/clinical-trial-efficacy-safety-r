@@ -1,0 +1,3 @@
+"Group","Patients","Events","Censored","Mean_PSA","Median_PSA","Median_observed_time"
+"Active control",203,146,57,-5.00958387495714,-4.997212274,0.9117043121
+"Experimental",209,147,62,-4.65684412400287,-4.718498871,0.8952772074

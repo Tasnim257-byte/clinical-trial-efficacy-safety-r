@@ -1,0 +1,168 @@
+---
+title: "Prostate Cancer: Treatment, PSA, and Survival"
+subtitle: "Reproducible exploratory analysis of 17 historical randomized trials"
+author: "Independent biostatistics portfolio project"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: flatly
+    self_contained: true
+params:
+  results_file: null
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE, fig.align="center")
+r <- readRDS(params$results_file)
+pfmt <- function(p) ifelse(is.na(p),"NA",ifelse(p < 0.0001,"p < 0.0001",sprintf("p = %.4f",p)))
+nfmt <- function(x, dig=3) ifelse(is.na(x),"Not reached",sprintf(paste0("%.",dig,"f"),x))
+show_table <- function(df, caption) knitr::kable(df, format="html", caption=caption,
+                                                   escape=TRUE, align="c")
+```
+
+<style>
+body {line-height: 1.68; color: #253247;}
+h1, h2, h3 {color: #17365a;}
+.main-container {max-width: 1080px;}
+table {margin: 1.5rem 0;}
+blockquote {border-left: 4px solid #467ca5; background-color: #f5f8fb; padding: 8px 18px;}
+</style>
+
+> **Research integrity note.** This report uses a real historical dataset distributed with the R package `Surrogate`. It is an educational secondary analysis, not a prospective study, regulatory analysis, or evidence that any modern treatment is effective. No individual treatments, PSA units or adverse-event variables are identified in the package documentation.
+
+# Executive summary
+
+We evaluated the treatment assignment, the continuous PSA surrogate endpoint, and recorded time-to-event outcomes for **`r nrow(r$d)` participants in `r length(unique(r$d$TRIAL))` randomized trials**. Treatment was coded 0 for active control and 1 for experimental treatment. There were **`r sum(r$d$SURVIND==1)` recorded survival events** and **`r sum(r$d$SURVIND==0)` censored observations**.
+
+The PSA analysis estimated a trial-adjusted treatment-minus-control mean difference of **`r nfmt(r$psa$Difference)`** (95% CI **`r nfmt(r$psa$CI_low)` to `r nfmt(r$psa$CI_high)`**; `r pfmt(r$psa$P_value)`). This association is statistically distinguishable from zero in this exploratory linear model. The PSA transformation and measurement units are not specified in the public dataset description, so the coefficient must not be presented as a clinical PSA change in ng/mL.
+
+The trial-stratified constant-HR Cox model estimated **HR `r nfmt(r$cox$HR)`** (95% CI **`r nfmt(r$cox$CI_low)` to `r nfmt(r$cox$CI_high)`**; `r pfmt(r$cox$P_value)`). Its proportional-hazards screen gave **`r pfmt(r$ph_p)`**, suggesting that a time-constant hazard ratio may be inadequate. A separately explored log-time interaction yielded **`r pfmt(r$time_interaction_p)`**. These results do not establish treatment benefit or PSA surrogacy.
+
+# Dataset and design
+
+The `Surrogate::prostate` dataset aggregates 17 double-blind randomized trials in advanced prostate cancer. The package documents `TRIAL`, `TREAT`, `PSA`, `SURVTIME`, `SURVIND`, and `PATID`. For analysis, `SURVIND=1` is treated as an observed event and `SURVIND=0` as censored. Check the original study documentation before making clinical claims about exact event definitions or time units.
+
+```{r}
+view <- r$by_arm
+view$Mean_PSA <- nfmt(view$Mean_PSA)
+view$Median_PSA <- nfmt(view$Median_PSA)
+view$Median_observed_time <- nfmt(view$Median_observed_time)
+show_table(view,"Participant characteristics and recorded events by randomization group")
+```
+
+# PSA endpoint analysis
+
+We estimated the mean PSA difference using linear regression with a fixed effect for each trial (`PSA ~ TREAT + factor(TRIAL)`). This adjusts for mean differences between trials but assumes a common treatment coefficient; the comparison is exploratory.
+
+```{r}
+p <- r$psa
+out <- data.frame(`Model`=p$Model, `N`=p$N,
+                  `Estimated difference`=nfmt(p$Difference),
+                  `95% CI`=paste0("[",nfmt(p$CI_low),", ",nfmt(p$CI_high),"]"),
+                  `P value`=pfmt(p$P_value),check.names=FALSE)
+show_table(out,"Trial-adjusted PSA treatment comparison")
+```
+
+```{r, out.width='92%'}
+knitr::include_graphics(file.path(r$figure_dir,"psa_by_treatment.png"))
+```
+
+## Model diagnostics
+
+The residual-versus-fitted, Q-Q, scale-location, and Cook's-distance panels below are *diagnostic screens*, not proof of linear-model validity. Particular attention is needed for potentially heterogeneous responses across trials, nonconstant variance, outliers, and treatment-effect heterogeneity. The Shapiro-Wilk test of residual normality returned **`r pfmt(r$psa_diag$P_value)`**, but this does not test or guarantee all model assumptions.
+
+```{r, out.width='95%'}
+knitr::include_graphics(file.path(r$figure_dir,"psa_regression_diagnostics.png"))
+```
+
+# Survival analysis
+
+## Kaplan-Meier curves
+
+These Kaplan-Meier curves pool patients across trials for **descriptive visualization only**. They do not adjust for different baseline hazards among trials. Tick marks show censoring.
+
+```{r, out.width='92%'}
+knitr::include_graphics(file.path(r$figure_dir,"kaplan_meier.png"))
+```
+
+```{r}
+k <- r$km
+k$Median_survival_time <- nfmt(k$Median_survival_time)
+show_table(k,"Kaplan-Meier summary (time units as recorded in dataset)")
+```
+
+## Trial-stratified Cox model
+
+We fitted `Surv(SURVTIME, SURVIND) ~ TREAT + strata(TRIAL)`, allowing each trial its own unspecified baseline hazard, but imposing a common constant treatment hazard ratio.
+
+```{r}
+c <- r$cox
+out <- data.frame(Model=c$Model, `Hazard ratio`=nfmt(c$HR),
+                  `95% CI`=paste0("[",nfmt(c$CI_low),", ",nfmt(c$CI_high),"]"),
+                  `P value`=pfmt(c$P_value),check.names=FALSE)
+show_table(out,"Trial-stratified constant-hazard-ratio model")
+```
+
+## Proportional-hazards assumption
+
+The Schoenfeld-residual test checks whether the treatment coefficient is consistent with being constant over follow-up. The result should be combined with the plot and considered exploratory. A small p-value indicates evidence against proportional hazards under this model.
+
+```{r}
+pht <- r$ph
+out <- data.frame(Test=pht$Test, `Chi-square`=nfmt(pht$Chi_square,2),
+                  `P value`=pfmt(pht$P_value),check.names=FALSE)
+show_table(out,"Proportional-hazards diagnostic results")
+```
+
+```{r, out.width='92%'}
+knitr::include_graphics(file.path(r$figure_dir,"proportional_hazards_diagnostic.png"))
+```
+
+# Exploratory time-varying Cox model
+
+After examining non-proportional hazards, we explored the additional term `tt(TREAT) = TREAT * log(time)` in a trial-stratified Cox model. The resulting formula is:
+
+\[
+HR(t) = \exp\{\beta_{TREAT} + \beta_{TREAT \times \log(t)}\log(t)\}.
+\]
+
+This model assumes a *logarithmic* change in the treatment log-hazard ratio; this is a modeling choice, not a verified biological mechanism. The plotted 95% confidence bands are **pointwise**, not simultaneous, and do not adjust for exploratory model selection.
+
+```{r}
+z <- r$time
+out <- data.frame(Coefficient=z$Effect, `Estimated log-HR coefficient`=nfmt(z$Log_HR_coefficient),
+                  `P value`=pfmt(z$P_value),check.names=FALSE)
+show_table(out,"Time-varying Cox regression coefficients")
+```
+
+```{r, out.width='92%'}
+knitr::include_graphics(file.path(r$figure_dir,"time_varying_hazard_ratio.png"))
+```
+
+The figure excludes the sparsest endpoints of observed event times. Any apparent early-to-late reversal must be interpreted with uncertainty intervals, sensitivity analyses, and recognition that the model was chosen after reviewing diagnostics. The 2-degree-of-freedom whole-model test and interaction p-value answer different statistical questions.
+
+# Limitations and next steps
+
+1. **Historical, aggregated trial data:** Experimental treatments may not represent the same regimen across trials. A common treatment coefficient or HR can mask treatment-effect heterogeneity.
+2. **PSA measurement scale:** The package documents PSA as a surrogate endpoint but does not clearly identify its transformation, assessment time, or units. A statistically significant difference is not necessarily a favorable clinical PSA response.
+3. **Surrogacy is not proven:** A group difference in PSA and a survival analysis do not establish individual-level or trial-level surrogacy. Formal surrogate evaluation requires further assumptions and methods.
+4. **Event coding and time units:** Status 1 is treated as an event; precise clinical endpoint and time units should be validated against the original trial protocols.
+5. **Proportional hazards:** The constant-HR model should not be the sole summary when the PH diagnostic shows evidence against its assumptions. The log-time alternative was explored after seeing the data.
+6. **Multiple models:** These are exploratory, unadjusted analyses with no prespecified multiplicity correction or independent clinical validation.
+7. **No adverse-event data:** This prostate dataset **cannot** support the safety analysis used in the separate synthetic-trial portfolio module. Do not combine the datasets as though they were the same study.
+8. **Reporting:** Model checking and plotted uncertainty reduce common interpretation errors, but this work is not validated for regulated medical research.
+
+# Reproducibility and sources
+
+Run `source("real_data/prostate_trial/run_prostate_report.R")` from the main RStudio project. The script writes tables, figures, an RDS result bundle, and this HTML report into `real_data/prostate_trial/outputs/`. All figures and estimates in this report are generated from the public dataset by that script.
+
+- Source: [Surrogate prostate dataset documentation](https://search.r-project.org/CRAN/refmans/Surrogate/html/prostate.html)
+- Cox methods: [survival package reference](https://stat.ethz.ch/R-manual/R-devel/library/survival/html/coxph.html)
+- PH diagnostics: [cox.zph reference](https://stat.ethz.ch/R-manual/R-devel/library/survival/html/cox.zph.html)
+
+```{r}
+cat(paste(r$session_info, collapse="\n"))
+```

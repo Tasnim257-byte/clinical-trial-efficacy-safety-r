@@ -1,0 +1,2 @@
+"Model","N","Difference","CI_low","CI_high","P_value"
+"PSA ~ treatment + trial fixed effects",412,0.323388399334084,0.0290884189937086,0.61768837967446,0.0313501193831405
