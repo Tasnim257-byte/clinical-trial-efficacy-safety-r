@@ -1,0 +1,85 @@
+---
+title: "Clinical Trial Efficacy and Safety: Synthetic Demonstration"
+author: "Independent biostatistics portfolio project"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+# Knit works both from the repository root and from reports/.
+project_root <- if (file.exists("R/helpers.R")) normalizePath(".") else normalizePath("..")
+knitr::opts_knit$set(root.dir = project_root)
+source(file.path(project_root, "R/helpers.R"))
+source(file.path(project_root, "R/analyze_efficacy.R"))
+source(file.path(project_root, "R/analyze_safety.R"))
+source(file.path(project_root, "R/power_simulation.R"))
+trial <- read_trial(file.path(project_root, "data/synthetic_trial.csv"))
+efficacy <- analyze_efficacy(trial)
+safety <- analyze_safety(trial)
+```
+
+> **Synthetic data only.** The participants, intervention, measurements and adverse events are completely fictional. Nothing in this report supports clinical decisions or real-world safety/efficacy claims.
+
+# Study overview
+
+We modeled a hypothetical 12-week, two-arm, randomized experiment of a symptom burden score (0–100; **lower is better**). This document illustrates reproducible statistical analysis and reporting; it is not a real clinical investigation.
+
+There are `r nrow(trial)` randomized participants across `r length(unique(trial$site))` simulated sites. `r sum(is.na(trial$week12_score))` week-12 outcome values are missing.
+
+# Efficacy analysis
+
+Primary exploratory model: ANCOVA for the week-12 score, adjusted for randomized arm, baseline score, age, sex, and site. The effect estimate is **Treatment minus Control**.
+
+```{r efficacy-results}
+knitr::kable(efficacy$arm_summary, digits = 3,
+             caption = "Observed-case summaries and missing outcomes")
+knitr::kable(efficacy$primary, digits = 4,
+             caption = "Adjusted continuous endpoint")
+knitr::kable(efficacy$responder, digits = 4,
+             caption = "Adjusted responder odds ratio (exploratory)")
+```
+
+```{r efficacy-plot, fig.width=8, fig.height=4.5}
+observed <- !is.na(trial$week12_score)
+boxplot((trial$week12_score - trial$baseline_score)[observed] ~
+          factor(trial$arm[observed], levels = c("Control", "Treatment")),
+        col = c("#456D94", "#1C9A8A"),
+        ylab = "Week 12 − baseline (negative = improvement)",
+        xlab = "Randomized arm", main = "Synthetic symptom score change")
+abline(h = 0, lty = 2)
+```
+
+# Missing-data sensitivity
+
+The primary analysis excludes unobserved week-12 scores. The sensitivity analysis substitutes baseline for missing week-12 scores (a *no-improvement* assumption). This simplistic method may be biased and is not a replacement for multiple imputation or formal estimand sensitivity analyses.
+
+```{r missing-sensitivity}
+knitr::kable(efficacy$sensitivity, digits = 4)
+```
+
+# Safety analysis
+
+Safety summaries use all randomized simulated participants. Rates and Wilson intervals are descriptive; sparse event comparisons should be interpreted cautiously.
+
+```{r safety-results}
+knitr::kable(safety$event_table, digits = 3,
+             caption = "Adverse-event frequency and Wilson 95% intervals")
+knitr::kable(safety$primary_safety, digits = 4,
+             caption = "Exploratory crude comparison for any adverse event")
+```
+
+# Monte Carlo operating characteristics
+
+The following scenario analysis repeatedly simulates a simple ANCOVA model and estimates the proportion of p-values below 0.05. The Monte Carlo standard error quantifies uncertainty from the **number of simulation repetitions**.
+
+```{r simulation}
+knitr::kable(run_power_scenarios(), digits = 4)
+```
+
+# Limitations
+
+This is **not patient data**. Effects are implanted into the simulated data-generating mechanism. The complete-case analysis, BOCF sensitivity, simplistic adverse-event indicators and short follow-up do not satisfy standards for confirmatory clinical trial inference. See `docs/analysis_plan.md` for assumptions and planned improvements.
