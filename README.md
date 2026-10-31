@@ -155,3 +155,26 @@ clinical-trial-efficacy-safety-r/
 ## License and ethics
 
 MIT license covers original code and documentation. The synthetic dataset is fictional. **Never upload identifiable health records or protected health information to GitHub.**
+
+## Real Clinical Trial Analysis: Prostate Cancer
+
+**Project:** PSA Biomarker and Survival Analysis of Randomized Prostate Cancer Trials
+
+Analyzed historical clinical trial data from 412 patients across 17 randomized studies using R.
+
+**Statistical methods:**
+- Trial-adjusted linear regression for PSA comparisons
+- Kaplan-Meier survival estimation
+- Trial-stratified Cox proportional hazards regression
+- Schoenfeld residual diagnostics
+- Exploratory time-varying treatment effect modeling
+
+**Key findings:** The trial-adjusted PSA analysis identified a treatment-group difference (p = 0.0314). The constant-hazard-ratio survival model did not establish an overall survival benefit (HR = 0.991, p = 0.9414), while the proportional hazards diagnostic suggested possible non-proportionality (p = 0.0178).
+
+This is an exploratory analysis of historical research data, not a clinical treatment recommendation.
+
+[View analysis code](real_data/prostate_trial/run_prostate_report.R)
+
+[View prostate cancer research report file](real_data/prostate_trial/published/prostate_cancer_report.html)
+
+[Original dataset source](https://search.r-project.org/CRAN/refmans/Surrogate/html/prostate.html)
