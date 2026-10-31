@@ -175,6 +175,6 @@ This is an exploratory analysis of historical research data, not a clinical trea
 
 [View analysis code](prostate_trial/run_prostate_report.R)
 
-[View prostate cancer research report](prostate_trial/published/prostate_cancer_report.html)
+[View Full Prostate Cancer Research Report](https://tasnim257-byte.github.io/clinical-trial-efficacy-safety-r/prostate_trial/published/prostate_cancer_report.html)
 
 [Original dataset source](https://search.r-project.org/CRAN/refmans/Surrogate/html/prostate.html)
