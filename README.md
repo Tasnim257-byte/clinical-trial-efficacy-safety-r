@@ -63,6 +63,13 @@ rmarkdown::render("reports/clinical_trial_report.Rmd",
                   output_dir = "outputs")
 ```
 
+A [sample rendered HTML report](reports/clinical_trial_report.html) is included for review.
+Download this HTML file and open it in a web browser to view its embedded charts.
+The report hides analysis code while preserving output tables and charts, and
+formats p-values below 0.0001 as `p < 0.0001` rather than displaying `0`.
+The source is `reports/clinical_trial_report.Rmd`; rerunning `run_all.R` regenerates
+an updated HTML copy under `outputs/`.
+
 To regenerate a **different** deterministic synthetic dataset in R (overwrites the provided CSV) and rerun all analyses:
 
 ```bash

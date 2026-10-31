@@ -9,7 +9,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 # Knit works both from the repository root and from reports/.
 project_root <- if (file.exists("R/helpers.R")) normalizePath(".") else normalizePath("..")
 knitr::opts_knit$set(root.dir = project_root)
@@ -20,6 +20,21 @@ source(file.path(project_root, "R/power_simulation.R"))
 trial <- read_trial(file.path(project_root, "data/synthetic_trial.csv"))
 efficacy <- analyze_efficacy(trial)
 safety <- analyze_safety(trial)
+
+# Presentation-only formatting: raw model p-values remain numeric and unchanged.
+# Small values should not appear as 0 when rounded to four decimals.
+format_p_values <- function(result_table) {
+  p_columns <- grep("(^p_value$|_p_value$)", names(result_table), value = TRUE)
+  for (column in p_columns) {
+    values <- result_table[[column]]
+    result_table[[column]] <- ifelse(
+      is.na(values), "NA",
+      ifelse(values < 1e-4, "p < 0.0001",
+             formatC(values, format = "f", digits = 4))
+    )
+  }
+  result_table
+}
 ```
 
 > **Synthetic data only.** The participants, intervention, measurements and adverse events are completely fictional. Nothing in this report supports clinical decisions or real-world safety/efficacy claims.
@@ -37,9 +52,9 @@ Primary exploratory model: ANCOVA for the week-12 score, adjusted for randomized
 ```{r efficacy-results}
 knitr::kable(efficacy$arm_summary, digits = 3,
              caption = "Observed-case summaries and missing outcomes")
-knitr::kable(efficacy$primary, digits = 4,
+knitr::kable(format_p_values(efficacy$primary), digits = 4,
              caption = "Adjusted continuous endpoint")
-knitr::kable(efficacy$responder, digits = 4,
+knitr::kable(format_p_values(efficacy$responder), digits = 4,
              caption = "Adjusted responder odds ratio (exploratory)")
 ```
 
@@ -58,7 +73,7 @@ abline(h = 0, lty = 2)
 The primary analysis excludes unobserved week-12 scores. The sensitivity analysis substitutes baseline for missing week-12 scores (a *no-improvement* assumption). This simplistic method may be biased and is not a replacement for multiple imputation or formal estimand sensitivity analyses.
 
 ```{r missing-sensitivity}
-knitr::kable(efficacy$sensitivity, digits = 4)
+knitr::kable(format_p_values(efficacy$sensitivity), digits = 4)
 ```
 
 # Safety analysis
@@ -68,7 +83,7 @@ Safety summaries use all randomized simulated participants. Rates and Wilson int
 ```{r safety-results}
 knitr::kable(safety$event_table, digits = 3,
              caption = "Adverse-event frequency and Wilson 95% intervals")
-knitr::kable(safety$primary_safety, digits = 4,
+knitr::kable(format_p_values(safety$primary_safety), digits = 4,
              caption = "Exploratory crude comparison for any adverse event")
 ```
 
